@@ -1,0 +1,70 @@
+name: "Terraform Dev Deployment"
+
+on:
+  push:
+    branches:
+      - development
+    paths:
+      - 'environments/dev/**'
+      - 'modules/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches:
+      - development
+    paths:
+      - 'environments/dev/**'
+      - 'modules/**'
+      - '.github/workflows/**'
+
+jobs:
+
+  # 1. Trigger the bootstrap logic first
+  bootstrap-backend:
+    uses: ./.github/workflows/bootstrap-backend-dev.yml
+    secrets: inherit
+
+  terraform:
+    name: "Terraform Automation"
+    needs: bootstrap-backend # 👈 Forces dependency execution order
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./environments/dev
+
+    steps:
+    # 1. Checkout your code from GitHub onto the pipeline server
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 2. Setup the Terraform CLI tool
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.0
+
+    # 3. Securely authenticate with AWS using your GitHub Secrets
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
+        aws-region: us-east-1
+
+    # 4. Check for clean syntax formatting
+    - name: Terraform Format Check
+      run: terraform fmt -check
+
+    # 5. Initialize plugins and backend state
+    - name: Terraform Init
+      run: terraform init
+
+    # 6. Run a safe verification plan on Pull Requests
+    - name: Terraform Plan
+      if: github.event_name == 'pull_request'
+      run: terraform plan -no-color
+
+    # 7. Automatically deploy changes when code lands on the development branch
+    - name: Terraform Apply
+      if: github.event_name == 'push' && github.ref == 'refs/heads/development'
+      run: terraform apply -auto-approve
