@@ -1,1 +1,7 @@
-// Input variables for the VPC module.
+variable "environment" {
+  type = string
+}
+
+variable "vpc_cidr" {
+  type = string
+}
