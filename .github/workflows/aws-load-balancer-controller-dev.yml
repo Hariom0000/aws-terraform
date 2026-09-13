@@ -1,0 +1,150 @@
+name: "AWS Load Balancer Controller Dev"
+
+on:
+  workflow_run:
+    workflows:
+      - "Terraform Dev Deployment"
+    types:
+      - completed
+    branches:
+      - development
+
+permissions:
+  contents: read
+
+jobs:
+  install-controller:
+    name: "Install or Upgrade AWS Load Balancer Controller"
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Terraform Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
+          aws-region: us-east-1
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: latest
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: latest
+
+      - name: Verify Required Tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws --version
+          kubectl version --client
+          helm version --template '{{.Version}}'
+
+      - name: Verify EKS Cluster
+        shell: bash
+        env:
+          CLUSTER_NAME: dev-eks-cluster
+          AWS_REGION: us-east-1
+        run: |
+          set -euo pipefail
+          status=$(aws eks describe-cluster \
+            --name "$CLUSTER_NAME" \
+            --region "$AWS_REGION" \
+            --query 'cluster.status' \
+            --output text)
+
+          if [ "$status" != "ACTIVE" ]; then
+            echo "EKS cluster $CLUSTER_NAME is not ACTIVE: $status"
+            exit 1
+          fi
+
+      - name: Configure kubectl for EKS
+        shell: bash
+        env:
+          CLUSTER_NAME: dev-eks-cluster
+          AWS_REGION: us-east-1
+        run: |
+          set -euo pipefail
+          aws eks update-kubeconfig \
+            --name "$CLUSTER_NAME" \
+            --region "$AWS_REGION"
+          kubectl wait --for=condition=Ready nodes --all --timeout=10m
+
+      - name: Read Controller IAM Role
+        shell: bash
+        env:
+          ROLE_NAME: dev-aws-load-balancer-controller
+        run: |
+          set -euo pipefail
+          role_arn=$(aws iam get-role \
+            --role-name "$ROLE_NAME" \
+            --query 'Role.Arn' \
+            --output text)
+          test -n "$role_arn"
+          echo "CONTROLLER_ROLE_ARN=$role_arn" >> "$GITHUB_ENV"
+
+      - name: Create Controller Service Account
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl create namespace kube-system --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create serviceaccount aws-load-balancer-controller \
+            --namespace kube-system \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl annotate serviceaccount aws-load-balancer-controller \
+            --namespace kube-system \
+            eks.amazonaws.com/role-arn="$CONTROLLER_ROLE_ARN" \
+            --overwrite
+
+      - name: Get EKS VPC ID
+        shell: bash
+        env:
+          CLUSTER_NAME: dev-eks-cluster
+          AWS_REGION: us-east-1
+        run: |
+          set -euo pipefail
+          vpc_id=$(aws eks describe-cluster \
+            --name "$CLUSTER_NAME" \
+            --region "$AWS_REGION" \
+            --query 'cluster.resourcesVpcConfig.vpcId' \
+            --output text)
+          test -n "$vpc_id"
+          echo "EKS_VPC_ID=$vpc_id" >> "$GITHUB_ENV"
+
+      - name: Install or Upgrade AWS Load Balancer Controller
+        shell: bash
+        env:
+          CLUSTER_NAME: dev-eks-cluster
+          AWS_REGION: us-east-1
+        run: |
+          set -euo pipefail
+          helm repo add eks https://aws.github.io/eks-charts
+          helm repo update
+          helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+            --namespace kube-system \
+            --set clusterName="$CLUSTER_NAME" \
+            --set region="$AWS_REGION" \
+            --set vpcId="$EKS_VPC_ID" \
+            --set serviceAccount.create=false \
+            --set serviceAccount.name=aws-load-balancer-controller \
+            --wait \
+            --timeout 10m
+
+      - name: Verify Controller Health
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl rollout status deployment/aws-load-balancer-controller \
+            --namespace kube-system \
+            --timeout=10m
+          kubectl get deployment/aws-load-balancer-controller \
+            --namespace kube-system
