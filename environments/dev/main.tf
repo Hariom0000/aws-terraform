@@ -48,6 +48,11 @@ module "database" {
   eks_security_group_id = module.eks.cluster_security_group_id # Feeds EKS SG into Postgres rules!
 }
 
+module "container_registry" {
+  source      = "../../modules/container_registry"
+  environment = "dev"
+}
+
 # 4. Global Edge Presentation Frontend Layer (Your S3/CloudFront)
 module "frontend_dev" {
   source              = "../../modules/static_website"
