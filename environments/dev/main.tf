@@ -52,8 +52,8 @@ module "database" {
 module "frontend_dev" {
   source              = "../../modules/static_website"
   bucket_name         = "dev-handsonlab-s3"
-  domain_name         = "dev.handsonlab.space"
-  acm_certificate_arn = "arn:aws:acm:us-east-1:590183823048:certificate/c8279c61-8350-47f4-9975-1106d3fbac23"
+  domain_name         = "handsonlab.space"
+  acm_certificate_arn = "arn:aws:acm:us-east-1:718465053830:certificate/411ccbba-3a8a-459b-a2d0-4b82813df7c8"
 }
 
 /*module "frontend_dev" {
