@@ -12,3 +12,9 @@ variable "acm_certificate_arn" {
   description = "The ARN of the pre-generated ACM certificate in us-east-1"
   type        = string
 }
+
+variable "backend_origin_domain_name" {
+  description = "The DNS name of the EKS ALB used for /api/* requests"
+  type        = string
+  default     = null
+}

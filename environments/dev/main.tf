@@ -26,6 +26,12 @@ provider "aws" {
   #profile = "aws-dev-profile" # Enforces deployment to Dev AWS profile environment
 }
 
+variable "backend_origin_domain_name" {
+  description = "The DNS name of the EKS ALB used for /api/* requests"
+  type        = string
+  default     = null
+}
+
 module "vpc" {
   source      = "../../modules/vpc"
   environment = "dev"
@@ -55,10 +61,11 @@ module "container_registry" {
 
 # 4. Global Edge Presentation Frontend Layer (Your S3/CloudFront)
 module "frontend_dev" {
-  source              = "../../modules/static_website"
-  bucket_name         = "dev-handsonlab-s3"
-  domain_name         = "handsonlab.space"
-  acm_certificate_arn = "arn:aws:acm:us-east-1:718465053830:certificate/411ccbba-3a8a-459b-a2d0-4b82813df7c8"
+  source                     = "../../modules/static_website"
+  bucket_name                = "dev-handsonlab-s3"
+  domain_name                = "handsonlab.space"
+  acm_certificate_arn        = "arn:aws:acm:us-east-1:718465053830:certificate/411ccbba-3a8a-459b-a2d0-4b82813df7c8"
+  backend_origin_domain_name = var.backend_origin_domain_name
 }
 
 /*module "frontend_dev" {

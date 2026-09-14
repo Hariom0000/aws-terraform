@@ -1,0 +1,3 @@
+# Set this after the backend workflow creates the EKS ALB.
+# The value is printed as "EKS ALB origin" in the backend workflow logs.
+backend_origin_domain_name = "k8s-default-appingre-1234567890.us-east-1.elb.amazonaws.com"

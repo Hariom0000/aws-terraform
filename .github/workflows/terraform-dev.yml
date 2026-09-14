@@ -9,6 +9,11 @@ on:
       - 'modules/**'
       - '.github/workflows/**'
   workflow_dispatch:
+    inputs:
+      backend_origin_domain_name:
+        description: "EKS ALB DNS name for the /api/* CloudFront origin"
+        required: false
+        type: string
   pull_request:
     branches:
       - development
@@ -68,4 +73,11 @@ jobs:
     # 7. Automatically deploy changes when code lands on the development branch
     - name: Terraform Apply
       if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/development')
-      run: terraform apply -auto-approve
+      env:
+        BACKEND_ORIGIN_DOMAIN_NAME: ${{ inputs.backend_origin_domain_name }}
+      run: |
+        if [ -n "$BACKEND_ORIGIN_DOMAIN_NAME" ]; then
+          terraform apply -auto-approve -var="backend_origin_domain_name=$BACKEND_ORIGIN_DOMAIN_NAME"
+        else
+          terraform apply -auto-approve
+        fi
