@@ -53,14 +53,38 @@ jobs:
           echo "✅ DynamoDB lock table already exists. Skipping creation."
         else
           echo "⚠️ DynamoDB table not found. Building state locking engine..."
-          aws dynamodb create-table \
+          if ! create_output=$(aws dynamodb create-table \
               --table-name "$TABLE_NAME" \
               --attribute-definitions AttributeName=LockID,AttributeType=S \
               --key-schema AttributeName=LockID,KeyType=HASH \
               --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
-              --region us-east-1
-              
+              --region us-east-1 2>&1); then
+            if [[ "$create_output" == *"ResourceInUseException"* ]]; then
+              echo "✅ DynamoDB table creation is already in progress. Continuing to wait."
+            else
+              echo "$create_output" >&2
+              exit 1
+            fi
+          fi
+
           echo "Waiting for table activation..."
-          aws dynamodb wait table-exists --table-name "$TABLE_NAME" --region us-east-1
+          for attempt in {1..30}; do
+            table_status=$(aws dynamodb describe-table \
+              --table-name "$TABLE_NAME" \
+              --region us-east-1 \
+              --query 'Table.TableStatus' \
+              --output text 2>/dev/null || true)
+
+            if [ "$table_status" = "ACTIVE" ]; then
+              break
+            fi
+
+            if [ "$attempt" -eq 30 ]; then
+              echo "DynamoDB table did not become ACTIVE. Last status: $table_status" >&2
+              exit 1
+            fi
+
+            sleep 10
+          done
           echo "✅ DynamoDB lock table created and online."
         fi
