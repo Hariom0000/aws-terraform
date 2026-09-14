@@ -8,6 +8,7 @@ on:
       - completed
     branches:
       - development
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,14 +16,14 @@ permissions:
 jobs:
   install-controller:
     name: "Install or Upgrade AWS Load Balancer Controller"
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Terraform Code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4

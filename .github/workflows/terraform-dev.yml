@@ -8,6 +8,7 @@ on:
       - 'environments/dev/**'
       - 'modules/**'
       - '.github/workflows/**'
+  workflow_dispatch:
   pull_request:
     branches:
       - development
@@ -66,5 +67,5 @@ jobs:
 
     # 7. Automatically deploy changes when code lands on the development branch
     - name: Terraform Apply
-      if: github.event_name == 'push' && github.ref == 'refs/heads/development'
+      if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/development')
       run: terraform apply -auto-approve
