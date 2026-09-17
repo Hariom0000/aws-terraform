@@ -29,6 +29,9 @@ resource "aws_iam_policy" "load_balancer_controller" {
           "ec2:DescribeTags",
           "ec2:DescribeNetworkInterfaces",
           "ec2:DescribeInstanceTypes",
+          "ec2:DescribeRouteTables",
+          "ec2:DescribeVpcPeeringConnections",
+          "ec2:DescribeCoipPools",
           "elasticloadbalancing:DescribeLoadBalancers",
           "elasticloadbalancing:DescribeLoadBalancerAttributes",
           "elasticloadbalancing:DescribeListeners",
@@ -39,6 +42,8 @@ resource "aws_iam_policy" "load_balancer_controller" {
           "elasticloadbalancing:DescribeTargetGroups",
           "elasticloadbalancing:DescribeTargetGroupAttributes",
           "elasticloadbalancing:DescribeTargetHealth",
+          "elasticloadbalancing:DescribeCapacityReservation",
+          "elasticloadbalancing:DescribeTrustStores",
           "elasticloadbalancing:DescribeTags"
         ]
         Resource = "*"
@@ -65,7 +70,13 @@ resource "aws_iam_policy" "load_balancer_controller" {
           "elasticloadbalancing:DeleteLoadBalancer",
           "elasticloadbalancing:DeleteTargetGroup",
           "elasticloadbalancing:DeleteListener",
-          "elasticloadbalancing:DeleteRule"
+          "elasticloadbalancing:DeleteRule",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:CreateTags",
+          "ec2:DeleteTags"
         ]
         Resource = "*"
       }
