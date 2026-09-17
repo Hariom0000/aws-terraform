@@ -57,6 +57,17 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
         aws-region: us-east-1
 
+    - name: Read EKS ALB hostname
+      id: backend_origin
+      if: github.event_name != 'workflow_dispatch' || inputs.backend_origin_domain_name == ''
+      run: |
+        backend_origin_domain_name=$(aws ssm get-parameter \
+          --name "/handsonlab/dev/backend-origin-domain-name" \
+          --query 'Parameter.Value' \
+          --output text \
+          --region us-east-1 2>/dev/null || true)
+        echo "backend_origin_domain_name=$backend_origin_domain_name" >> "$GITHUB_OUTPUT"
+
     # 4. Check for clean syntax formatting
     - name: Terraform Format Check
       run: terraform fmt -check
@@ -74,10 +85,10 @@ jobs:
     - name: Terraform Apply
       if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/development')
       env:
-        BACKEND_ORIGIN_DOMAIN_NAME: ${{ inputs.backend_origin_domain_name }}
+        BACKEND_ORIGIN_DOMAIN_NAME: ${{ inputs.backend_origin_domain_name || steps.backend_origin.outputs.backend_origin_domain_name }}
       run: |
-        if [ -n "$BACKEND_ORIGIN_DOMAIN_NAME" ]; then
-          terraform apply -auto-approve -var="backend_origin_domain_name=$BACKEND_ORIGIN_DOMAIN_NAME"
-        else
-          terraform apply -auto-approve
+        if [ -z "$BACKEND_ORIGIN_DOMAIN_NAME" ]; then
+          echo "No EKS ALB hostname was found in SSM or workflow input. Deploy the backend first."
+          exit 1
         fi
+        terraform apply -auto-approve -var="backend_origin_domain_name=$BACKEND_ORIGIN_DOMAIN_NAME"

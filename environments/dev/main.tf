@@ -64,7 +64,7 @@ module "frontend_dev" {
   source                     = "../../modules/static_website"
   bucket_name                = "dev-handsonlab-s3"
   domain_name                = "handsonlab.space"
-  acm_certificate_arn        = "arn:aws:acm:us-east-1:718465053830:certificate/411ccbba-3a8a-459b-a2d0-4b82813df7c8"
+  acm_certificate_arn        = "arn:aws:acm:us-east-1:106220368686:certificate/59786f67-9d27-4df7-b6f9-98a1b90469c8"
   backend_origin_domain_name = var.backend_origin_domain_name
 }
 
