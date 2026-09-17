@@ -90,10 +90,17 @@ jobs:
     - name: Terraform Init
       run: terraform init
 
-    # 6. Run a safe verification plan on Pull Requests
+    # 6. Show the proposed changes for every deployment event
     - name: Terraform Plan
-      if: github.event_name == 'pull_request'
-      run: terraform plan -no-color
+      if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      env:
+        BACKEND_ORIGIN_DOMAIN_NAME: ${{ inputs.backend_origin_domain_name || steps.backend_origin.outputs.backend_origin_domain_name }}
+      run: |
+        if [ -n "$BACKEND_ORIGIN_DOMAIN_NAME" ]; then
+          terraform plan -no-color -var="backend_origin_domain_name=$BACKEND_ORIGIN_DOMAIN_NAME"
+        else
+          terraform plan -no-color
+        fi
 
     # 7. Automatically deploy changes when code lands on the development branch
     - name: Terraform Apply
