@@ -88,8 +88,9 @@ jobs:
       env:
         BACKEND_ORIGIN_DOMAIN_NAME: ${{ inputs.backend_origin_domain_name || steps.backend_origin.outputs.backend_origin_domain_name }}
       run: |
-        if [ -z "$BACKEND_ORIGIN_DOMAIN_NAME" ]; then
-          echo "No EKS ALB hostname was found in SSM or workflow input. Deploy the backend first."
-          exit 1
+        if [ -n "$BACKEND_ORIGIN_DOMAIN_NAME" ]; then
+          terraform apply -auto-approve -var="backend_origin_domain_name=$BACKEND_ORIGIN_DOMAIN_NAME"
+        else
+          echo "No EKS ALB hostname found. Applying core infrastructure without the CloudFront /api/* origin."
+          terraform apply -auto-approve
         fi
-        terraform apply -auto-approve -var="backend_origin_domain_name=$BACKEND_ORIGIN_DOMAIN_NAME"
