@@ -61,11 +61,12 @@ jobs:
       id: backend_origin
       if: github.event_name != 'workflow_dispatch' || inputs.backend_origin_domain_name == ''
       run: |
+        set -euo pipefail
         backend_origin_domain_name=$(aws ssm get-parameter \
           --name "/handsonlab/dev/backend-origin-domain-name" \
           --query 'Parameter.Value' \
           --output text \
-          --region us-east-1 2>/dev/null || true)
+          --region us-east-1)
         echo "backend_origin_domain_name=$backend_origin_domain_name" >> "$GITHUB_OUTPUT"
 
     # 4. Check for clean syntax formatting
