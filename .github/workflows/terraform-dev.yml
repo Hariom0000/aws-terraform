@@ -94,7 +94,7 @@ jobs:
       run: |
         set -euo pipefail
         repository_address="module.container_registry.aws_ecr_repository.backend"
-        if terraform state list | grep -Fxq "$repository_address"; then
+        if terraform state show "$repository_address" >/dev/null 2>&1; then
           echo "ECR repository is already managed by Terraform."
           exit 0
         fi
