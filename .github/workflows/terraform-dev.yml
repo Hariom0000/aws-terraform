@@ -62,11 +62,24 @@ jobs:
       if: github.event_name != 'workflow_dispatch' || inputs.backend_origin_domain_name == ''
       run: |
         set -euo pipefail
-        backend_origin_domain_name=$(aws ssm get-parameter \
+        ssm_error_file=$(mktemp)
+        if backend_origin_domain_name=$(aws ssm get-parameter \
           --name "/handsonlab/dev/backend-origin-domain-name" \
           --query 'Parameter.Value' \
           --output text \
-          --region us-east-1)
+          --region us-east-1 2>"$ssm_error_file"); then
+          :
+        else
+          ssm_status=$?
+          cat "$ssm_error_file" >&2
+          if grep -q "ParameterNotFound" "$ssm_error_file"; then
+            echo "Backend ALB hostname is not available yet; continuing with the initial infrastructure bootstrap."
+            backend_origin_domain_name=""
+          else
+            exit "$ssm_status"
+          fi
+        fi
+        rm -f "$ssm_error_file"
         echo "backend_origin_domain_name=$backend_origin_domain_name" >> "$GITHUB_OUTPUT"
 
     # 4. Check for clean syntax formatting
