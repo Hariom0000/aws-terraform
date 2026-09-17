@@ -171,11 +171,6 @@ module "container_registry" {
   environment = "dev"
 }
 
-import {
-  to = module.container_registry.aws_ecr_repository.backend
-  id = "dev-backend-service"
-}
-
 # 4. Global Edge Presentation Frontend Layer (Your S3/CloudFront)
 module "frontend_dev" {
   source                     = "../../modules/static_website"

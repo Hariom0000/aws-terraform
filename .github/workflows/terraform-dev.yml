@@ -90,6 +90,23 @@ jobs:
     - name: Terraform Init
       run: terraform init
 
+    - name: Adopt existing ECR repository
+      run: |
+        set -euo pipefail
+        repository_address="module.container_registry.aws_ecr_repository.backend"
+        if terraform state list | grep -Fxq "$repository_address"; then
+          echo "ECR repository is already managed by Terraform."
+          exit 0
+        fi
+
+        if aws ecr describe-repositories \
+          --repository-names "dev-backend-service" \
+          --region us-east-1 >/dev/null 2>&1; then
+          terraform import "$repository_address" "dev-backend-service"
+        else
+          echo "ECR repository does not exist yet; Terraform will create it."
+        fi
+
     # 6. Show the proposed changes for every deployment event
     - name: Terraform Plan
       if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
